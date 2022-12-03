@@ -9,6 +9,8 @@
 namespace blackbone
 {
 
+enum CreateThreadFlags: int;
+
 class ProcessThreads
 {
 public:

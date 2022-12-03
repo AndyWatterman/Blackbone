@@ -14,7 +14,7 @@
 namespace blackbone
 {
 
-enum CreateThreadFlags
+enum CreateThreadFlags: int
 {
     NoThreadFlags   = 0x0000,
     CreateSuspended = 0x0001,
