@@ -64,6 +64,10 @@ struct HookHandler<R( __fastcall* )(Args...), C> : public DetourBase
         else
             return (reinterpret_cast<hktypeR>(_callback))(args...);
     }
+
+    const auto& GetSavedContext() const {
+        return _context;
+    }
 };
 
 }

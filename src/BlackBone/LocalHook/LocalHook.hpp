@@ -169,9 +169,19 @@ private:
         // mov gs:[0x28], this
         (*jmpToHook)->mov( asmjit::host::rax, (uint64_t)this );
         (*jmpToHook)->mov( asmjit::host::qword_ptr_abs( 0x28 ).setSegment( asmjit::host::gs ), asmjit::host::rax );
+
+        // save some registers for the future use
+        // TODO: rdi, rsi
 #else
         // mov fs:[0x14], this
         (*jmpToHook)->mov( asmjit::host::dword_ptr_abs( 0x14 ).setSegment( asmjit::host::fs ) , (uint32_t)this );
+
+        // save some registers for the future use
+        (*jmpToHook)->mov(asmjit::x86::eax, uintptr_t(&(this->_context.edi)));
+        (*jmpToHook)->mov(asmjit::x86::ptr(asmjit::x86::eax), asmjit::x86::edi);
+        (*jmpToHook)->mov(asmjit::x86::eax, uintptr_t(&(this->_context.esi)));
+        (*jmpToHook)->mov(asmjit::x86::ptr(asmjit::x86::eax), asmjit::x86::esi);
+
 #endif // USE64
 
         (*jmpToHook)->jmp( (asmjit::Ptr)&HookHandler<Fn, C>::Handler );

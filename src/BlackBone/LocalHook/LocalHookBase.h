@@ -45,6 +45,20 @@ namespace ReturnMethod
     };
 }
 
+struct BLACKBONE_CONTEXT
+{
+    union
+    {
+        uintptr_t esi;
+        uintptr_t rsi;
+    };
+    union
+    {
+        uintptr_t edi;
+        uintptr_t rdi;
+    };
+};
+
 class DetourBase
 {
     using mapIdx = std::unordered_map<DWORD, int>;
@@ -113,6 +127,8 @@ protected:
     uint8_t* _origCode = nullptr;       // Original function bytes
     uint8_t* _origThunk = nullptr;      // Original bytes adjusted for relocation
     uint8_t* _newCode = nullptr;        // Trampoline bytes
+
+    BLACKBONE_CONTEXT _context{};       // Saved registers
     
     HookType::e _type = HookType::Inline;
     CallOrder::e _order = CallOrder::HookFirst;
