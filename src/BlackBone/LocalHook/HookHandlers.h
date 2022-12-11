@@ -6,7 +6,7 @@ namespace blackbone
 {
     class BLACKBONE_API NoClass { };
 
-    template<typename Fn, class C>
+    template<typename Fn, class C, bool is_intel = false>
     struct HookHandler;
 }
 

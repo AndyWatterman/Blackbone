@@ -6,13 +6,20 @@
 namespace blackbone
 {
 
-template<typename Fn, class C = NoClass>
-class Detour: public HookHandler<Fn, C>
+template<typename Fn, class C = NoClass, bool is_intel = false>
+class Detour: public HookHandler<Fn, C, is_intel>
 {
+
+#ifdef USE64
+    static_assert(is_intel == false, "At this moment you could use an Intel convention only with x86 code");
+#endif // USE64
+
 public:
     using type    = typename HookHandler<Fn, C>::type;
     using hktype  = typename HookHandler<Fn, C>::hktype;
     using hktypeC = typename HookHandler<Fn, C>::hktypeC;
+
+    //using arg_count = HookHandler<Fn, C>::arg_count;
 
 public:  
     Detour()
@@ -170,21 +177,50 @@ private:
         (*jmpToHook)->mov( asmjit::host::rax, (uint64_t)this );
         (*jmpToHook)->mov( asmjit::host::qword_ptr_abs( 0x28 ).setSegment( asmjit::host::gs ), asmjit::host::rax );
 
-        // save some registers for the future use
-        // TODO: rdi, rsi
+        (*jmpToHook)->jmp((asmjit::Ptr)&HookHandler<Fn, C>::Handler);
 #else
         // mov fs:[0x14], this
         (*jmpToHook)->mov( asmjit::host::dword_ptr_abs( 0x14 ).setSegment( asmjit::host::fs ) , (uint32_t)this );
 
-        // save some registers for the future use
-        (*jmpToHook)->mov(asmjit::x86::eax, uintptr_t(&(this->_context.edi)));
-        (*jmpToHook)->mov(asmjit::x86::ptr(asmjit::x86::eax), asmjit::x86::edi);
-        (*jmpToHook)->mov(asmjit::x86::eax, uintptr_t(&(this->_context.esi)));
-        (*jmpToHook)->mov(asmjit::x86::ptr(asmjit::x86::eax), asmjit::x86::esi);
+        // prepare for intel call
+        if constexpr(is_intel)
+        {
+            // save the 3rd and the 4th arguments
+            (*jmpToHook)->mov(asmjit::x86::ptr_abs(uintptr_t(&(this->_context.edi))), asmjit::x86::edi);
+            (*jmpToHook)->mov(asmjit::x86::ptr_abs(uintptr_t(&(this->_context.esi))), asmjit::x86::esi);
+
+            // save original return address
+            (*jmpToHook)->pop(asmjit::x86::eax);
+            (*jmpToHook)->mov(asmjit::x86::ptr_abs(uintptr_t(&(this->_context.ret_addr))), asmjit::x86::eax);
+
+            constexpr auto arg_count = HookHandler<Fn, C, is_intel>::arg_count;
+
+            if constexpr (arg_count > 3)
+            {
+                (*jmpToHook)->push(asmjit::x86::esi);
+            }
+            if constexpr (arg_count > 2)
+            {
+                (*jmpToHook)->push(asmjit::x86::edi);
+            }
+
+            // call hook handler
+            (*jmpToHook)->call((asmjit::Ptr)&HookHandler<Fn, C>::Handler);
+
+            // do we need to restore context? seems no, cuz compiler saves them
+            //(*jmpToHook)->mov(asmjit::x86::esi, uintptr_t(this->_context.esi));
+            //(*jmpToHook)->mov(asmjit::x86::edi, uintptr_t(this->_context.edi));
+
+            // return to callee
+            (*jmpToHook)->jmp(asmjit::x86::ptr_abs(uintptr_t(&(this->_context.ret_addr))));
+        }
+        else
+        {
+            (*jmpToHook)->jmp((asmjit::Ptr)&HookHandler<Fn, C>::Handler);
+        }
 
 #endif // USE64
-
-        (*jmpToHook)->jmp( (asmjit::Ptr)&HookHandler<Fn, C>::Handler );
+        
         (*jmpToHook)->relocCode( this->_buf );
 
         (*jmpToThunk)->setBaseAddress( (uintptr_t)this->_original );

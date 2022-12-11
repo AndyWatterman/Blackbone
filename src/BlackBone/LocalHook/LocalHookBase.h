@@ -57,11 +57,16 @@ struct BLACKBONE_CONTEXT
         uintptr_t edi;
         uintptr_t rdi;
     };
+
+    uintptr_t ret_addr;
 };
 
 class DetourBase
 {
     using mapIdx = std::unordered_map<DWORD, int>;
+
+    template <typename T, typename U, typename... Args>
+    friend constexpr int __fastcall FastCallToIntel(T&&, U&&, Args&&...);
 
 public:
     BLACKBONE_API DetourBase();
@@ -128,7 +133,7 @@ protected:
     uint8_t* _origThunk = nullptr;      // Original bytes adjusted for relocation
     uint8_t* _newCode = nullptr;        // Trampoline bytes
 
-    BLACKBONE_CONTEXT _context{};       // Saved registers
+    BLACKBONE_CONTEXT _context{};       // Saved context used for Intel call
     
     HookType::e _type = HookType::Inline;
     CallOrder::e _order = CallOrder::HookFirst;
